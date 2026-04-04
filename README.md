@@ -92,9 +92,3 @@ todo-widget/
     └── widget.png
 ```
 
----
-
-## ✦ Built by
-
-**Maissa** — CS student building real things to learn 🌹  
-[github.com/maissakaciaissa](https://github.com/maissakaciaissa)
