@@ -19,7 +19,7 @@ class TodoWidget(qtw.QWidget):
         qtg.QFontDatabase.addApplicationFont("fonts/Righteous-Regular.ttf")
         self.setWindowTitle("my tasks ✦")
 
-        self.resize(280, 400)    
+        self.resize(380, 400)    
         self.setWindowFlags(qtc.Qt.FramelessWindowHint)
         self.setAttribute(qtc.Qt.WA_TranslucentBackground)
         
@@ -155,6 +155,24 @@ class TodoWidget(qtw.QWidget):
         self.add_btn.clicked.connect(self.add_task)
         self.task_input.returnPressed.connect(self.add_task)
         self.update_date_label()
+
+        # back to today button
+        self.today_btn = qtw.QPushButton("back to today")
+        self.today_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                color: rgba(255,255,255,0.6);
+                font-family: Righteous;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                color: rgba(255,255,255,0.9);
+            }
+        """)
+        self.today_btn.clicked.connect(self.go_today)
+        self.container_layout.addWidget(self.today_btn)
+
         # resize grip bottom right corner
         self.grip = qtw.QSizeGrip(self)
         self.grip.setStyleSheet("background: transparent;")
@@ -171,6 +189,11 @@ class TodoWidget(qtw.QWidget):
     def go_next(self):
         from datetime import timedelta
         self.viewing_date += timedelta(days=1)
+        self.update_date_label()
+        self.render_tasks()
+
+    def go_today(self):
+        self.viewing_date = date.today()
         self.update_date_label()
         self.render_tasks()
 
@@ -279,7 +302,6 @@ class TodoWidget(qtw.QWidget):
                 
                 return tasks
         return []
-   
    
     def save_tasks(self):
         with open("tasks.json", "w") as f:
