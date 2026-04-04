@@ -254,7 +254,7 @@ class TodoWidget(qtw.QWidget):
         new_task = {
             "text": text,
             "done": False,
-            "date": str(date.today())
+            "date": str(self.viewing_date)
         }
         self.tasks.append(new_task)
         self.save_tasks()
