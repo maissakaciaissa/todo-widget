@@ -75,6 +75,20 @@ python main.py
 
 ---
 
+## 🐧 Linux / Mac Users
+
+**Run the widget:**
+
+```bash
+chmod +x run.sh
+./run.sh
+```
+
+**Auto-start with Linux:**
+Add `run.sh` to your startup applications via your desktop environment settings.
+
+---
+
 ## ✦ Project Structure
 
 ```
@@ -91,4 +105,3 @@ todo-widget/
     ├── bg.png
     └── widget.png
 ```
-
