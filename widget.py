@@ -71,7 +71,6 @@ class TodoWidget(qtw.QWidget):
             font-size: 13px;
             border: none;
             font-family: Sarina;                               
-                            
         """)
         self.date_label.setAlignment(qtc.Qt.AlignCenter)
         
@@ -82,8 +81,6 @@ class TodoWidget(qtw.QWidget):
         nav_layout.addWidget(self.date_label)
         nav_layout.addWidget(self.next_btn)
         self.container_layout.addLayout(nav_layout)
-
-
 
         input_layout = qtw.QHBoxLayout()
         
@@ -179,7 +176,6 @@ class TodoWidget(qtw.QWidget):
         self.grip.resize(16, 16)
         self.render_tasks()
     
-
     def go_prev(self):
         from datetime import timedelta
         self.viewing_date -= timedelta(days=1)
@@ -211,6 +207,77 @@ class TodoWidget(qtw.QWidget):
         self.save_tasks()
         self.render_tasks()
 
+    def edit_task(self, index):
+        dialog = qtw.QDialog(self)
+        dialog.setWindowTitle("edit task")
+        dialog.setWindowFlags(qtc.Qt.FramelessWindowHint | qtc.Qt.Dialog)
+        dialog.setAttribute(qtc.Qt.WA_TranslucentBackground)
+        dialog.setStyleSheet("""
+            QDialog {
+                background: transparent;
+            }
+            QFrame {
+                background-color: #1c1c1e;
+                border-radius: 14px;
+            }
+            QLineEdit {
+                background-color: rgba(255,255,255,0.08);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                padding: 8px;
+                font-family: Righteous;
+                font-size: 14px;
+            }
+            QPushButton {
+                background-color: rgba(232,196,208,0.15);
+                color: #e8c4d0;
+                border: none;
+                border-radius: 8px;
+                padding: 8px 16px;
+                font-family: Righteous;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: rgba(232,196,208,0.3);
+            }
+        """)
+
+        input_field = qtw.QLineEdit()
+        input_field.setText(self.tasks[index]["text"])
+        input_field.selectAll()
+
+        btn_layout = qtw.QHBoxLayout()
+        save_btn = qtw.QPushButton("save")
+        cancel_btn = qtw.QPushButton("cancel")
+        btn_layout.addWidget(save_btn)
+        btn_layout.addWidget(cancel_btn)
+
+        save_btn.clicked.connect(lambda: self.save_edit(index, input_field.text(), dialog))
+        cancel_btn.clicked.connect(dialog.close)
+        input_field.returnPressed.connect(lambda: self.save_edit(index, input_field.text(), dialog))
+
+        frame = qtw.QFrame()
+        frame_layout = qtw.QVBoxLayout()
+        frame_layout.setContentsMargins(20, 20, 20, 20)
+        frame_layout.setSpacing(12)
+        frame_layout.addWidget(input_field)
+        frame_layout.addLayout(btn_layout)
+        frame.setLayout(frame_layout)
+
+        outer = qtw.QVBoxLayout()
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(frame)
+        dialog.setLayout(outer)
+        dialog.exec_()
+
+    def save_edit(self, index, text, dialog):
+        if text.strip():
+            self.tasks[index]["text"] = text.strip()
+            self.save_tasks()
+            self.render_tasks()
+        dialog.close()
+    
     def render_tasks(self):
         for i in reversed(range(self.tasks_layout.count())):
             self.tasks_layout.itemAt(i).widget().deleteLater()
@@ -240,7 +307,11 @@ class TodoWidget(qtw.QWidget):
                 """)
                 checkbox.stateChanged.connect(lambda state, i=index: self.toggle_task(i))
 
+                # fix 2: word wrap for long tasks
                 task_label = qtw.QLabel(task["text"])
+                task_label.setMinimumWidth(0)
+                task_label.setSizePolicy(qtw.QSizePolicy.Expanding, qtw.QSizePolicy.Preferred)
+                task_label.setWordWrap(True)
                 task_label.setStyleSheet(f"""
                     color: {"rgba(232,196,208,0.4)" if task["done"] else "#e8c4d0"};
                     font-family: Righteous;
@@ -248,6 +319,22 @@ class TodoWidget(qtw.QWidget):
                     text-decoration: {"line-through" if task["done"] else "none"};
                     border: none;
                 """)
+
+                # fix 3: edit button
+                edit_btn = qtw.QPushButton("✎")
+                edit_btn.setFixedSize(24, 24)
+                edit_btn.setStyleSheet("""
+                    QPushButton {
+                        color: rgba(232, 196, 208, 0.4);
+                        background: transparent;
+                        border: none;
+                        font-size: 14px;
+                    }
+                    QPushButton:hover {
+                        color: #e8c4d0;
+                    }
+                """)
+                edit_btn.clicked.connect(lambda checked, i=index: self.edit_task(i))
 
                 del_btn = qtw.QPushButton("×")
                 del_btn.setFixedSize(24, 24)
@@ -267,6 +354,7 @@ class TodoWidget(qtw.QWidget):
                 row_layout.addWidget(checkbox)
                 row_layout.addWidget(task_label)
                 row_layout.addStretch()
+                row_layout.addWidget(edit_btn)
                 row_layout.addWidget(del_btn)
                 self.tasks_layout.addWidget(row)
 
@@ -293,9 +381,18 @@ class TodoWidget(qtw.QWidget):
                 tasks = json.loads(content)
                 
                 today = str(date.today())
+                today_texts = [t["text"] for t in tasks if t["date"] == today]
+                
                 for task in tasks:
+                    # fix 1: duplicate unfinished past tasks to today instead of moving
                     if task["done"] == False and task["date"] < today:
-                        task["date"] = today
+                        if task["text"] not in today_texts:
+                            tasks.append({
+                                "text": task["text"],
+                                "done": False,
+                                "date": today
+                            })
+                            today_texts.append(task["text"])
                 
                 with open("tasks.json", "w") as f:
                     json.dump(tasks, f, indent=4)
