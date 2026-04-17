@@ -1,3 +1,5 @@
+from operator import index
+
 from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtCore as qtc
 from PyQt5 import QtGui as qtg
@@ -199,6 +201,10 @@ class TodoWidget(qtw.QWidget):
 
     def toggle_task(self, index):
         self.tasks[index]["done"] = not self.tasks[index]["done"]
+        if self.tasks[index]["done"]:
+            self.tasks[index]["completed"] = str(date.today())
+        else:
+            self.tasks[index]["completed"] = None
         self.save_tasks()
         self.render_tasks()
 
@@ -284,7 +290,7 @@ class TodoWidget(qtw.QWidget):
         
         viewing = str(self.viewing_date)
         for index, task in enumerate(self.tasks):
-            if task["date"] == viewing:
+            if viewing in task["history"] and (not task["done"] or task["completed"] == viewing):
                 row = qtw.QWidget()
                 row.setStyleSheet("background: transparent;")
                 row_layout = qtw.QHBoxLayout()
@@ -365,7 +371,9 @@ class TodoWidget(qtw.QWidget):
         new_task = {
             "text": text,
             "done": False,
-            "date": str(self.viewing_date)
+            "created": str(date.today()),
+            "completed": None,
+            "history": [str(self.viewing_date)]
         }
         self.tasks.append(new_task)
         self.save_tasks()
@@ -381,18 +389,11 @@ class TodoWidget(qtw.QWidget):
                 tasks = json.loads(content)
                 
                 today = str(date.today())
-                today_texts = [t["text"] for t in tasks if t["date"] == today]
                 
                 for task in tasks:
                     # fix 1: duplicate unfinished past tasks to today instead of moving
-                    if task["done"] == False and task["date"] < today:
-                        if task["text"] not in today_texts:
-                            tasks.append({
-                                "text": task["text"],
-                                "done": False,
-                                "date": today
-                            })
-                            today_texts.append(task["text"])
+                    if task["done"] == False and task["history"][-1] < today:
+                       task["history"].append(today)
                 
                 with open("tasks.json", "w") as f:
                     json.dump(tasks, f, indent=4)
